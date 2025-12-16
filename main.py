@@ -50,7 +50,7 @@ def draw_landmarks_on_image(rgb_image, detection_result):
 def main():
     nb_half_pushup = 0
     status = -1 # -1, neutral; 0, bas; 1, haut
-    threshold = 0.8 # probability of threshold
+    threshold = 0.7 # probability of threshold
 
     pushup_model = load_pushup_model()
 
@@ -87,7 +87,7 @@ def main():
 
                     if X.shape[0] > 24:
                         print(X[np.array([11, 12, 13, 14, 23, 24, 25, 26])])
-                        if np.all(X[np.array([11, 12, 13, 14, 23, 24, 25, 26])]):
+                        if np.all(X[np.array([11, 12, 13, 14, 23, 24, 25, 26])] != 0.0):
                             Y_proba = pushup_model.predict_proba([X])[0]
                             Y = np.argmax(Y_proba)
 
