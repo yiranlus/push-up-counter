@@ -1,6 +1,7 @@
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
+import os
 
 import cv2
 
@@ -15,7 +16,7 @@ VisionRunningMode = mp.tasks.vision.RunningMode
 
 def load_pushup_model():
     import pickle
-    with open("model_generations/model.pickle", "rb") as f:
+    with open(f"{os.path.dirname(__file__)}/model_generations/model.pickle", "rb") as f:
         return pickle.load(f)
 
 MODEL_PATH = '/home/yiran.lu@Digital-Grenoble.local/Downloads/pose_landmarker_heavy.task'
@@ -49,6 +50,7 @@ def draw_landmarks_on_image(rgb_image, detection_result):
 def main():
     nb_half_pushup = 0
     status = -1 # -1, neutral; 0, bas; 1, haut
+    threshold = 0.8 # probability of threshold
 
     pushup_model = load_pushup_model()
 
@@ -76,16 +78,22 @@ def main():
 
                 # image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
-                if results and results.pose_landmarks:
+                if results and results.pose_world_landmarks:
                     result_image = draw_landmarks_on_image(image, results)
                     
                     ## predict status
-                    X = np.array([[np.sqrt(p.x**2 + p.y**2 + p.z**2) for p in results.pose_world_landmarks[0]]])
-                    Y = pushup_model.predict(X)[0]
+                    X = np.array([np.sqrt(p.x**2 + p.y**2 + p.z**2) for p in results.pose_world_landmarks[0]])
+                    X[np.array([p.presence < 0.1 for p in results.pose_world_landmarks[0]])] = 0.0
 
-                    if Y != status:
-                        nb_half_pushup += 1
-                        status = Y
+                    if X.shape[0] > 24:
+                        print(X[np.array([11, 12, 13, 14, 23, 24, 25, 26])])
+                        if np.all(X[np.array([11, 12, 13, 14, 23, 24, 25, 26])]):
+                            Y_proba = pushup_model.predict_proba([X])[0]
+                            Y = np.argmax(Y_proba)
+
+                            if Y != status and Y_proba[Y] >= threshold:
+                                nb_half_pushup += 1
+                                status = Y
                 else:
                     result_image = image
 
